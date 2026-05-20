@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' as fc;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -41,7 +42,18 @@ class _SavedContactsScreenState extends ConsumerState<SavedContactsScreen> {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: SmartUSSDAppBar(title: 'Saved Contacts', showBack: false, userInitials: 'S'),
+      appBar: SmartUSSDAppBar(
+        title: 'Saved Contacts',
+        showBack: false,
+        actions: [
+          // Feature ⑦: Import from device phonebook
+          IconButton(
+            icon: const Icon(Icons.contacts_outlined),
+            tooltip: 'Import from Phone',
+            onPressed: () => _importFromPhone(context),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddContactSheet(context),
         backgroundColor: cs.primary,
@@ -300,6 +312,147 @@ class _SavedContactsScreenState extends ConsumerState<SavedContactsScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Feature ⑦ — Import contacts from device phonebook.
+  /// Uses flutter_contacts package. Works locally; no data leaves the device.
+  Future<void> _importFromPhone(BuildContext context) async {
+    // Request READ_CONTACTS permission
+    final granted = await fc.FlutterContacts.requestPermission(readonly: true);
+    if (!granted) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Contacts permission denied. Enable in Settings.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Fetch all device contacts with phone numbers
+    final deviceContacts = await fc.FlutterContacts.getContacts(
+      withProperties: true,
+    );
+    final withPhone = deviceContacts
+        .where((c) => c.phones.isNotEmpty)
+        .toList();
+
+    if (!context.mounted) return;
+
+    if (withPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No contacts with phone numbers found.')),
+      );
+      return;
+    }
+
+    // Show selection dialog
+    final selected = <String>{};
+    final cs = Theme.of(context).colorScheme;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          maxChildSize: 0.95,
+          builder: (_, scrollCtrl) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Import from Phone (${withPhone.length})',
+                        style: AppTextStyles.headlineMd,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        // Save selected contacts
+                        int count = 0;
+                        for (final c in withPhone) {
+                          if (selected.contains(c.id)) {
+                            final phone = c.phones.first.number
+                                .replaceAll(RegExp(r'\s+'), '');
+                            await ref.read(contactProvider.notifier).add(
+                              ContactModel(
+                                name: c.displayName,
+                                phone: phone,
+                              ),
+                            );
+                            count++;
+                          }
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  '$count contact${count == 1 ? '' : 's'} imported successfully'),
+                            ),
+                          );
+                        }
+                      },
+                      child: Text(
+                        'Import ${selected.length > 0 ? "(${selected.length})" : ""}',
+                        style: TextStyle(
+                          color: selected.isEmpty ? cs.outline : cs.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollCtrl,
+                  itemCount: withPhone.length,
+                  itemBuilder: (_, i) {
+                    final c = withPhone[i];
+                    final phone = c.phones.first.number;
+                    final isChecked = selected.contains(c.id);
+                    return CheckboxListTile(
+                      value: isChecked,
+                      onChanged: (_) {
+                        setModalState(() {
+                          if (isChecked) {
+                            selected.remove(c.id);
+                          } else {
+                            selected.add(c.id);
+                          }
+                        });
+                      },
+                      title: Text(
+                        c.displayName,
+                        style: AppTextStyles.labelMd.copyWith(
+                            color: cs.onSurface),
+                      ),
+                      subtitle: Text(
+                        phone,
+                        style: AppTextStyles.labelSm.copyWith(
+                            color: cs.onSurfaceVariant),
+                      ),
+                      activeColor: cs.primary,
+                      controlAffinity: ListTileControlAffinity.leading,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

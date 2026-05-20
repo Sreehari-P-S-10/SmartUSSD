@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../providers/auth_provider.dart';
@@ -51,6 +52,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _navigate() async {
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
+
+    // Check registration first (set by RegisterScreen)
+    final prefs = await SharedPreferences.getInstance();
+    final isRegistered = prefs.getBool('is_registered') ?? false;
+
+    if (!mounted) return;
+    if (!isRegistered) {
+      context.go('/register');
+      return;
+    }
+
     final authNotifier = ref.read(authProvider.notifier);
     final hasPin = await authNotifier.hasPin();
     if (!mounted) return;

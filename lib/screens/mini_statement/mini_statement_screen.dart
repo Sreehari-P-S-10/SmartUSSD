@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../providers/transaction_provider.dart';
+import '../../services/pdf_export_service.dart';
 import '../../widgets/app_bar_widget.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/transaction_tile.dart';
@@ -84,15 +86,28 @@ class MiniStatementScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
-            // Export button
+            // Fix ③: Real PDF export
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Export coming soon!')),
-                ),
+                onPressed: () async {
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final name = prefs.getString('user_name') ?? 'Account Holder';
+                    await PdfExportService.exportTransactions(
+                      recent,
+                      userName: name,
+                    );
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Export failed: $e')),
+                      );
+                    }
+                  }
+                },
                 icon: const Icon(Icons.download_rounded),
-                label: const Text('Export Statement'),
+                label: const Text('Export as PDF'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: cs.primary,
                   side: BorderSide(color: cs.primary.withValues(alpha: 0.5)),

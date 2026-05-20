@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/currency_formatter.dart';
@@ -10,6 +11,26 @@ import '../../providers/balance_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/quick_action_card.dart';
+
+/// Load user initials from SharedPreferences (set during registration).
+Future<String> _getInitial() async {
+  final prefs = await SharedPreferences.getInstance();
+  final name = prefs.getString('user_name') ?? '';
+  return name.isNotEmpty ? name[0].toUpperCase() : 'U';
+}
+
+/// Load time-appropriate greeting with user's name.
+Future<String> _getGreeting() async {
+  final prefs = await SharedPreferences.getInstance();
+  final name = prefs.getString('user_name') ?? '';
+  final hour = DateTime.now().hour;
+  final greet = hour < 12
+      ? 'Good Morning'
+      : hour < 17
+          ? 'Good Afternoon'
+          : 'Good Evening';
+  return name.isNotEmpty ? '$greet $name' : greet;
+}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -37,14 +58,21 @@ class HomeScreen extends ConsumerWidget {
             titleSpacing: 16,
             title: Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: cs.primaryContainer,
-                  child: Text(
-                    'S',
-                    style: AppTextStyles.labelMd.copyWith(
-                      color: cs.onPrimaryContainer,
-                      fontWeight: FontWeight.w700,
+                // Fix ③: profile avatar tap → go to /profile
+                GestureDetector(
+                  onTap: () => context.go('/profile'),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: cs.primaryContainer,
+                    child: FutureBuilder<String>(
+                      future: _getInitial(),
+                      builder: (context, snap) => Text(
+                        snap.data ?? 'U',
+                        style: AppTextStyles.labelMd.copyWith(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -72,15 +100,18 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Welcome
+              // Welcome — name loaded from SharedPreferences
               Text(
                 'Welcome back,',
                 style: AppTextStyles.labelMd.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 4),
-              Text(
-                'Good Morning Sreehari',
-                style: AppTextStyles.headlineLgMobile.copyWith(color: cs.onSurface),
+              FutureBuilder<String>(
+                future: _getGreeting(),
+                builder: (context, snap) => Text(
+                  snap.data ?? 'Good Morning',
+                  style: AppTextStyles.headlineLgMobile.copyWith(color: cs.onSurface),
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -126,13 +157,15 @@ class HomeScreen extends ConsumerWidget {
                 crossAxisSpacing: 12,
                 childAspectRatio: 1.3,
                 children: [
+                  // Fix ②: Use gradient-decorated container for dark-mode visibility
                   QuickActionCard(
                     icon: Icons.send_rounded,
                     label: 'Send Money',
-                    backgroundColor: cs.primary,
+                    backgroundColor: const Color(0xFF3949AB),
                     iconColor: Colors.white,
                     textColor: Colors.white,
-                    onTap: () { HapticFeedback.lightImpact(); context.go('/send'); },
+                    // Fix ⑤: push keeps back-stack so back arrow works
+                    onTap: () { HapticFeedback.lightImpact(); context.push('/send'); },
                   ),
                   QuickActionCard(
                     icon: Icons.account_balance_rounded,
@@ -140,7 +173,7 @@ class HomeScreen extends ConsumerWidget {
                     backgroundColor: cs.secondaryContainer,
                     iconColor: cs.onSecondaryContainer,
                     textColor: cs.onSecondaryContainer,
-                    onTap: () { HapticFeedback.lightImpact(); context.go('/balance'); },
+                    onTap: () { HapticFeedback.lightImpact(); context.push('/balance'); },
                   ),
                   QuickActionCard(
                     icon: Icons.receipt_long_rounded,
@@ -148,7 +181,7 @@ class HomeScreen extends ConsumerWidget {
                     backgroundColor: cs.tertiaryContainer.withValues(alpha: 0.4),
                     iconColor: cs.tertiary,
                     textColor: cs.tertiary,
-                    onTap: () { HapticFeedback.lightImpact(); context.go('/statement'); },
+                    onTap: () { HapticFeedback.lightImpact(); context.push('/statement'); },
                   ),
                   QuickActionCard(
                     icon: Icons.contacts_rounded,
@@ -156,14 +189,14 @@ class HomeScreen extends ConsumerWidget {
                     backgroundColor: cs.surfaceContainerHigh,
                     iconColor: cs.primary,
                     textColor: cs.onSurface,
-                    onTap: () { HapticFeedback.lightImpact(); context.go('/contacts'); },
+                    onTap: () { HapticFeedback.lightImpact(); context.push('/contacts'); },
                   ),
                 ],
               ),
               const SizedBox(height: 28),
 
-              // Refer & Earn Banner
-              _ReferBanner(cs: cs),
+              // Fix ④: Refer & Earn Banner — commented out (preserved for future use)
+              // _ReferBanner(cs: cs),
             ],
           ),
         ),
