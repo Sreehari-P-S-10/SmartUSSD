@@ -405,7 +405,7 @@ class _SavedContactsScreenState extends ConsumerState<SavedContactsScreen> {
                         }
                       },
                       child: Text(
-                        'Import ${selected.length > 0 ? "(${selected.length})" : ""}',
+                        'Import ${selected.isNotEmpty ? "(${selected.length})" : ""}',
                         style: TextStyle(
                           color: selected.isEmpty ? cs.outline : cs.primary,
                           fontWeight: FontWeight.w700,

@@ -438,56 +438,54 @@ class _LastTransactionCard extends StatelessWidget {
   }
 }
 
-class _ReferBanner extends StatelessWidget {
-  final ColorScheme cs;
-  const _ReferBanner({required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: cs.secondaryContainer,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Refer & Earn ₹100',
-                  style: AppTextStyles.headlineMd.copyWith(
-                    color: cs.onSecondaryContainer,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Invite friends and earn rewards in your bank account.',
-                  style: AppTextStyles.bodyMd.copyWith(
-                    color: cs.onSecondaryContainer.withValues(alpha: 0.8),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: cs.primary,
-              foregroundColor: cs.onPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text('Invite'),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ─── Refer & Earn Banner (hidden for now — uncomment call site + class to re-enable) ───
+// class _ReferBanner extends StatelessWidget {
+//   final ColorScheme cs;
+//   const _ReferBanner({required this.cs});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: const EdgeInsets.all(24),
+//       decoration: BoxDecoration(
+//         color: cs.secondaryContainer,
+//         borderRadius: BorderRadius.circular(20),
+//         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+//       ),
+//       child: Row(
+//         children: [
+//           Expanded(
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Text('Refer & Earn ₹100',
+//                     style: AppTextStyles.headlineMd.copyWith(
+//                       color: cs.onSecondaryContainer,
+//                     )),
+//                 const SizedBox(height: 6),
+//                 Text(
+//                   'Invite friends and earn rewards in your bank account.',
+//                   style: AppTextStyles.bodyMd.copyWith(
+//                     color: cs.onSecondaryContainer.withValues(alpha: 0.8),
+//                     fontSize: 13,
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//           const SizedBox(width: 16),
+//           ElevatedButton(
+//             onPressed: () {},
+//             style: ElevatedButton.styleFrom(
+//               backgroundColor: cs.primary,
+//               foregroundColor: cs.onPrimary,
+//               shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(10)),
+//             ),
+//             child: const Text('Invite'),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }

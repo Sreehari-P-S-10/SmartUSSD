@@ -1,10 +1,10 @@
-/// Carrier configuration for USSD vs IVR routing.
-///
-/// JIO does not support *99# USSD — use NPCI 123PAY IVR instead.
-/// All other carriers use standard USSD (*99#) via url_launcher.
-///
-/// TODO (Future): When Firebase Phone Auth is integrated, also verify carrier
-/// at registration time by cross-referencing the phone number prefix ranges.
+// Carrier configuration for USSD vs IVR routing.
+//
+// Jio does not support *99# USSD — use NPCI 123PAY IVR instead.
+// All other carriers use standard USSD (*99#) via url_launcher.
+//
+// TODO (Future Firebase): When Firebase Phone Auth is integrated, also verify
+// carrier at registration time by cross-referencing phone number prefix ranges.
 
 class CarrierConfig {
   final String key;
