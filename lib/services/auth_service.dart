@@ -35,6 +35,8 @@ class AuthService {
 
   Future<bool> hasPin() => _storage.hasPin();
 
+  Future<void> clearPin() => _storage.deletePin();
+
   Future<void> setBiometricEnabled(bool enabled) =>
       _storage.setBiometricEnabled(enabled);
 

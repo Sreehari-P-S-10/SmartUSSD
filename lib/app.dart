@@ -11,6 +11,7 @@ import 'screens/contacts/saved_contacts_screen.dart';
 import 'screens/history/transaction_history_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/mini_statement/mini_statement_screen.dart';
+import 'screens/profile/privacy_settings_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/send_money/send_money_screen.dart';
 import 'screens/splash/splash_screen.dart';
@@ -29,6 +30,7 @@ final _router = GoRouter(
     GoRoute(path: '/history', builder: (_, __) => const TransactionHistoryScreen()),
     GoRoute(path: '/contacts', builder: (_, __) => const SavedContactsScreen()),
     GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+    GoRoute(path: '/privacy', builder: (_, __) => const PrivacySettingsScreen()),
   ],
 );
 

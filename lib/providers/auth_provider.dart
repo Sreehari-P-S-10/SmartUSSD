@@ -90,6 +90,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<bool> hasPin() => _authService.hasPin();
+  Future<void> clearPin() => _authService.clearPin();
   Future<bool> isBiometricAvailable() => _authService.isBiometricAvailable();
   Future<bool> isBiometricEnabled() => _authService.isBiometricEnabled();
   Future<void> setBiometricEnabled(bool v) => _authService.setBiometricEnabled(v);

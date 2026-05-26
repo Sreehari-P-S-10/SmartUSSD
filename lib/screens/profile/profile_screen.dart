@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/constants/ussd_codes.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/database/database_helper.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/contact_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/bottom_nav_bar.dart';
@@ -17,10 +18,9 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  String _name = 'Sreehari';
-  String _phone = '+91 98765 43210';
-  String _bank = 'Global Federal Bank';
-  bool _biometricEnabled = true;
+  String _name = '';
+  String _phone = '';
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -29,18 +29,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    final db = DatabaseHelper();
-    final profile = await db.getProfile();
-    if (profile != null && mounted) {
-      setState(() {
-        _name = profile['name'] as String? ?? 'Sreehari';
-        _phone = profile['phone'] as String? ?? '+91 98765 43210';
-        _bank = profile['bank'] as String? ?? 'Global Federal Bank';
-      });
-    }
+    // Task 6: Read real name and phone from SharedPreferences (set at registration)
+    final prefs = await SharedPreferences.getInstance();
     final authNotifier = ref.read(authProvider.notifier);
     final bio = await authNotifier.isBiometricEnabled();
-    if (mounted) setState(() => _biometricEnabled = bio);
+    if (mounted) {
+      setState(() {
+        _name = prefs.getString('user_name') ?? '';
+        _phone = prefs.getString('user_phone') ?? '';
+        _biometricEnabled = bio;
+      });
+    }
   }
 
   @override
@@ -106,7 +105,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            _name.isNotEmpty ? _name[0].toUpperCase() : 'S',
+                            _name.isNotEmpty ? _name[0].toUpperCase() : '?',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 40,
@@ -132,35 +131,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text(_name,
-                      style: AppTextStyles.headlineLgMobile.copyWith(color: cs.onSurface)),
-                  const SizedBox(height: 4),
-                  Text(_phone,
-                      style: AppTextStyles.bodyMd.copyWith(color: cs.onSurfaceVariant)),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _ProfileChip('🏦 $_bank',
-                          cs.tertiaryContainer.withValues(alpha: 0.3), cs.tertiary),
-                      const SizedBox(width: 8),
-                      _ProfileChip('✓ Verified',
-                          cs.secondaryContainer.withValues(alpha: 0.4), cs.onSecondaryContainer),
-                    ],
+                  Text(
+                    _name.isNotEmpty ? _name : 'Your Name',
+                    style: AppTextStyles.headlineLgMobile.copyWith(color: cs.onSurface),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _phone.isNotEmpty ? _phone : 'Your Phone',
+                    style: AppTextStyles.bodyMd.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 12),
+                  // Task 5: Only show ✓ Verified chip (bank chip removed)
+                  _ProfileChip('✓ Verified',
+                      cs.secondaryContainer.withValues(alpha: 0.4), cs.onSecondaryContainer),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Stats Row
-            Row(
-              children: [
-                Expanded(child: _ProfileStatCard('$txCount', 'Transactions', cs)),
-                const SizedBox(width: 12),
-                Expanded(child: _ProfileStatCard('2.4k', 'Reward Points', cs)),
-              ],
-            ),
+            // Task 2: Single full-width stat card (Reward Points removed)
+            _ProfileStatCard('$txCount', 'Transactions', cs),
             const SizedBox(height: 24),
 
             // Security & Privacy
@@ -173,56 +163,73 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onTap: () => context.go('/pin-setup'),
               ),
               _profileDivider(cs),
+              // Task 3: Biometric toggle with proper feedback
               SwitchListTile(
                 title: Text('Biometric Authentication',
                     style: AppTextStyles.labelMd.copyWith(color: cs.onSurface)),
                 value: _biometricEnabled,
                 activeTrackColor: cs.primary,
                 onChanged: (v) async {
+                  if (v) {
+                    // Turning ON: verify device has biometrics enrolled
+                    final available =
+                        await ref.read(authProvider.notifier).isBiometricAvailable();
+                    if (!available) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'No biometrics found on device. Enroll fingerprint/face in Android Settings first.',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                      return; // revert — don't update state
+                    }
+                  } else {
+                    // Turning OFF: inform user
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Biometric login disabled. Use PIN to log in.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  }
                   setState(() => _biometricEnabled = v);
                   await ref.read(authProvider.notifier).setBiometricEnabled(v);
                 },
               ),
               _profileDivider(cs),
+              // Task 4: Privacy Settings navigates to real page
               ListTile(
                 title: Text('Privacy Settings',
                     style: AppTextStyles.labelMd.copyWith(color: cs.onSurface)),
                 trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-                onTap: () {},
+                onTap: () => context.push('/privacy'),
               ),
             ]),
             const SizedBox(height: 16),
 
-            // Payment Settings
-            _ProfileSectionHeader('Payment Settings', Icons.credit_card_outlined, cs),
+            // Task 7: "Account Info" (renamed from "Payment Settings")
+            // Task 5 + 7: Preferred Bank and Transaction Limits removed — only Linked Phone remains
+            _ProfileSectionHeader('Account Info', Icons.credit_card_outlined, cs),
             _ProfileSettingsCard(cs: cs, children: [
-              ListTile(
-                title: Text('Preferred Bank',
-                    style: AppTextStyles.labelMd.copyWith(color: cs.onSurface)),
-                subtitle: Text(_bank,
-                    style: AppTextStyles.labelSm.copyWith(color: cs.onSurfaceVariant)),
-                trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-                onTap: () => _showBankPicker(context),
-              ),
-              _profileDivider(cs),
               ListTile(
                 title: Text('Linked Phone Number',
                     style: AppTextStyles.labelMd.copyWith(color: cs.onSurface)),
-                subtitle:
-                    Text(_phone, style: AppTextStyles.labelSm.copyWith(color: cs.onSurfaceVariant)),
+                subtitle: Text(
+                  _phone.isNotEmpty ? _phone : 'Not set',
+                  style: AppTextStyles.labelSm.copyWith(color: cs.onSurfaceVariant),
+                ),
                 trailing: Icon(Icons.lock_outline_rounded, color: cs.onSurfaceVariant, size: 18),
-              ),
-              _profileDivider(cs),
-              ListTile(
-                title: Text('Transaction Limits',
-                    style: AppTextStyles.labelMd.copyWith(color: cs.onSurface)),
-                trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-                onTap: () {},
               ),
             ]),
             const SizedBox(height: 16),
 
-            // Appearance
+            // Task 8: Font Size removed — only Dark Mode + App Language remain
             _ProfileSectionHeader('Appearance', Icons.palette_outlined, cs),
             _ProfileSettingsCard(cs: cs, children: [
               SwitchListTile(
@@ -231,13 +238,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 value: isDark,
                 activeTrackColor: cs.primary,
                 onChanged: (_) => ref.read(themeProvider.notifier).toggle(),
-              ),
-              _profileDivider(cs),
-              ListTile(
-                title: Text('Font Size',
-                    style: AppTextStyles.labelMd.copyWith(color: cs.onSurface)),
-                trailing: Text('Medium',
-                    style: AppTextStyles.labelMd.copyWith(color: cs.primary)),
               ),
               _profileDivider(cs),
               ListTile(
@@ -269,14 +269,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ]),
             const SizedBox(height: 16),
 
-            // Sign Out
+            // Task 10: Sign Out with confirmation dialog
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ref.read(authProvider.notifier).logout();
-                  context.go('/login');
-                },
+                onPressed: () => _confirmSignOut(context),
                 icon: const Icon(Icons.logout_rounded),
                 label: const Text('Sign Out'),
                 style: OutlinedButton.styleFrom(
@@ -291,43 +288,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showBankPicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 16),
-          Text('Select Your Bank', style: AppTextStyles.headlineMd),
-          const SizedBox(height: 8),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              children: indianBanks
-                  .map((b) => ListTile(
-                        title: Text(b, style: AppTextStyles.labelMd),
-                        trailing: _bank == b
-                            ? Icon(Icons.check_rounded,
-                                color: Theme.of(ctx).colorScheme.primary)
-                            : null,
-                        onTap: () async {
-                          setState(() => _bank = b);
-                          await DatabaseHelper().updateProfile({'bank': b});
-                          if (ctx.mounted) Navigator.pop(ctx);
-                        },
-                      ))
-                  .toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
       ),
     );
   }
@@ -354,6 +314,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  // Task 9: Reset App — also clears contacts, SharedPreferences, navigates to /register
   void _confirmReset(BuildContext context) {
     showDialog(
       context: context,
@@ -366,14 +327,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               await DatabaseHelper().resetDatabase();
+              // Clear SharedPreferences (registration + settings)
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              // Clear Riverpod contact state in memory
+              ref.read(contactProvider.notifier).clearAll();
               if (ctx.mounted) {
                 Navigator.pop(ctx);
-                context.go('/pin-setup');
+                context.go('/register');
               }
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Task 10: Sign Out — confirmation dialog, clears SharedPreferences + PIN, goes to /register
+  void _confirmSignOut(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign Out?'),
+        content: const Text(
+          'You will be signed out and need to re-enter your name, '
+          'phone number, and carrier to use the app again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              // Clear registration data from SharedPreferences
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              // Clear PIN from secure storage
+              await ref.read(authProvider.notifier).clearPin();
+              // Reset Riverpod auth state
+              ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/register');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Sign Out'),
           ),
         ],
       ),
@@ -463,6 +466,7 @@ class _ProfileStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLowest,

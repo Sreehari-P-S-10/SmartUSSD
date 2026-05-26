@@ -18,7 +18,7 @@ class _PinLoginScreenState extends ConsumerState<PinLoginScreen>
     with SingleTickerProviderStateMixin {
   String _pin = '';
   String? _errorMsg;
-  bool _isBiometricAvailable = false;
+  bool _showBiometric = false;
   late AnimationController _shakeController;
   Timer? _lockoutTimer;
   int _lockoutRemaining = 0;
@@ -37,8 +37,9 @@ class _PinLoginScreenState extends ConsumerState<PinLoginScreen>
     final notifier = ref.read(authProvider.notifier);
     final available = await notifier.isBiometricAvailable();
     final enabled = await notifier.isBiometricEnabled();
-    if (mounted) setState(() => _isBiometricAvailable = available && enabled);
-    if (_isBiometricAvailable) _tryBiometric();
+    final shouldShow = available && enabled;
+    if (mounted) setState(() => _showBiometric = shouldShow);
+    if (shouldShow) _tryBiometric();
   }
 
   Future<void> _tryBiometric() async {
@@ -200,7 +201,8 @@ class _PinLoginScreenState extends ConsumerState<PinLoginScreen>
                 onBackspace: _onBackspace,
                 disabled: auth.isInLockout,
               ),
-              if (_isBiometricAvailable) ...[
+              // Biometric button — only shown when biometrics are enabled in settings
+              if (_showBiometric) ...[
                 const SizedBox(height: 24),
                 TextButton.icon(
                   onPressed: _tryBiometric,

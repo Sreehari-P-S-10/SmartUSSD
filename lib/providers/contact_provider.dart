@@ -33,6 +33,10 @@ class ContactNotifier extends StateNotifier<List<ContactModel>> {
     await loadAll();
   }
 
+  void clearAll() {
+    state = [];
+  }
+
   List<ContactModel> get favorites =>
       state.where((c) => c.isFavorite).toList();
 
